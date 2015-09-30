@@ -1,0 +1,129 @@
+package com.newroad.cache.common.redis;
+
+import java.io.Serializable;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import redis.clients.jedis.Jedis;
+
+import com.newroad.cache.common.Cache;
+import com.newroad.cache.common.tools.SerializeUtil;
+
+public class RedisCache implements Cache<String, Serializable> {
+
+  private static Logger logger = LoggerFactory.getLogger(RedisCache.class);
+
+  ConcurrentMap<String, Serializable> map = new ConcurrentHashMap<String, Serializable>();
+
+  protected Jedis cacheClient;
+
+  public RedisCache(String address, int port, String password, int max_active, int max_idle, int max_wait_time, int timeout) {
+    super();
+    RedisManager.init(address, port, password, max_active, max_idle, max_wait_time, timeout);
+    this.cacheClient = RedisManager.getJedis();
+  }
+
+  @Override
+  public Serializable get(String key) {
+    byte[] bytes = cacheClient.get(key.getBytes());
+    // return map.get(key);
+    return (Serializable) SerializeUtil.unserialize(bytes);
+  }
+
+  @Override
+  public Map<String, Serializable> getAllPresent(Iterable<String> keys) {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  @Override
+  public boolean set(String key, Serializable value) {
+    String statusCode = cacheClient.set(key.getBytes(), SerializeUtil.serialize(value));
+    // map.put(key, value);
+    if (statusCode != null) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  @Override
+  public boolean set(String key, Serializable value, long expire) {
+    String statusCode = cacheClient.set(key.getBytes(), SerializeUtil.serialize(value), "NX".getBytes(), "EX".getBytes(), expire);
+    // map.put(key, value);
+    if (statusCode != null) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  public boolean save() {
+    String statusCode = cacheClient.save();
+    if (statusCode != null) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  public boolean asyncSave() {
+    String statusCode = cacheClient.bgsave();
+    if (statusCode != null) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  @Override
+  public int setAll(Map<? extends String, ? extends Serializable> m) {
+    // TODO Auto-generated method stub
+    return 0;
+  }
+
+  @Override
+  public boolean delete(String key) {
+    Long integerCode = cacheClient.del(key.getBytes());
+    logger.debug("delete key=" + key + " integerCode=" + integerCode);
+    if (integerCode > 0) {
+      return true;
+    }
+    return false;
+  }
+
+  @Override
+  public int deleteAll(Iterable<String> keys) {
+
+    return 0;
+  }
+
+  @Override
+  public boolean deleteAll() {
+    // TODO Auto-generated method stub
+    return false;
+  }
+
+  @Override
+  public long size() {
+    // TODO Auto-generated method stub
+    return cacheClient.dbSize();
+  }
+
+  @Override
+  public ConcurrentMap<String, Serializable> asMap() {
+    // TODO Auto-generated method stub
+    return null;
+  }
+
+  @Override
+  public List<String> keys() {
+    // TODO Auto-generated method stub
+    return null;
+  }
+}
